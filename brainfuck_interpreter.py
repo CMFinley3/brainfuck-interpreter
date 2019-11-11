@@ -1,7 +1,5 @@
 import sys
 
-#TODO Document Code
-
 class BrainfuckInterpreter:
     def __init__(self):        
         """
