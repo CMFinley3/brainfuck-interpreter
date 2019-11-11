@@ -3,72 +3,115 @@ import sys
 #TODO Document Code
 
 class BrainfuckInterpreter:
-
-    def __init__(self):
-        self.memory = [0]
-        self.pointer = 0
-        self.input_buffer = ''
+    def __init__(self):        
+        """
+        This class represents a Brainfuck Iterpreter
+        """
+        self._memory = [0]
+        self._pointer = 0
+        self._input_buffer = ''
+        self._bracket_stack = []
+        self._operations = {
+            '>' : self._increment_pointer,
+            '<' : self._decrement_pointer,
+            '+' : self._increment_value,
+            '-' : self._decrement_value,
+            '.' : self._output,
+            ',' : self._input,
+        }
 
     def _get_current_value(self):
-        return self.memory[self.pointer]
+        """        
+        Returns:
+            byte -- value at current memory address
+        """
+        return self._memory[self._pointer]
 
     def _set_current_value(self, value):
-        self.memory[self.pointer] = value
+        """        
+        Arguments:
+            value {byte} -- sets the current memory address to the given value
+        """
+        self._memory[self._pointer] = ((value + 2560) % 256)
+
+    def _currently_zero(self):
+        """        
+        Returns:
+            bool -- is the current memory address 0
+        """
+        return self._get_current_value() == 0
 
     def _increment_pointer(self):
-        self.pointer += 1
-        if len(self.memory) <= self.pointer:
-            self.memory.append(0)
+        """
+        Increments the pointer to the next memory address
+        """
+        self._pointer += 1
+        if len(self._memory) <= self._pointer:
+            self._memory.append(0)
 
     def _decrement_pointer(self):
-        self.pointer -= 1
-        if self.pointer < 0:
-            raise Exception('Referencing Negative Memory Address')
+        """ 
+        Decrements the pointer to the previous memory address
+
+        Raises:
+            IndexError: You can't decrement the pointer past 0
+        """
+        self._pointer -= 1
+        if self._pointer < 0:
+            raise IndexError ('Referencing Negative Memory Address')
 
     def _increment_value(self):
-        self._set_current_value((self._get_current_value() + 1) % 256)
+        """
+        Increments the value at the current memory address by 1
+        """
+        self._set_current_value((self._get_current_value() + 1))
 
     def _decrement_value(self):
-        self._set_current_value((self._get_current_value() - 1) % 256)
+        """
+        Decrements the value at the current memory address by 1
+        """
+        self._set_current_value((self._get_current_value() - 1))
 
     def _output(self):
+        """
+        Outputs the current memory address as its ASCII value
+        """
         print(str(chr(self._get_current_value())), end = '')
 
     def _input(self):
+        """
+        Takes input from the user and buffers it. When programs ask for it,
+        they get the ASCII values of the input. EOFs leave the memory unaffected.
+        """
         try:
-            if len(self.input_buffer) == 0:
-                self.input_buffer = input('?') + '\n'
-            self._set_current_value(ord(self.input_buffer[0]))
-            self.input_buffer = self.input_buffer[1:]
+            if len(self._input_buffer) == 0:
+                self._input_buffer = input('?') + '\n'
+            self._set_current_value(ord(self._input_buffer[0]))
+            self._input_buffer = self._input_buffer[1:]
         except EOFError:
             pass
-
-    def _currently_zero(self):
-        return self._get_current_value() == 0
-
+    
     def interpret(self, code):
+        """
+        Interprets the string of code passed in
 
-        bracket_stack = []
+        Arguments:
+            code {str} -- Code to interpret
+        """
 
+        # Used a while loop here because brackets can move around your position in code
         current_position = 0
         while current_position < len(code):
 
+            # Character for current operation
             character = code[current_position]
 
-            if character == '>':
-                self._increment_pointer()
-            elif character == '<':
-                self._decrement_pointer()
-            elif character == '+':
-                self._increment_value()
-            elif character == '-':
-                self._decrement_value()
-            elif character == '.':
-                self._output()
-            elif character == ',':
-                self._input()
+            # If not a loop operation, execute
+            if character in self._operations:
+                self._operations[character]()
             elif character == '[':
                 if self._currently_zero():
+                    # Ignore all code until you have as many closed brackets as you do open                    
                     bracket_delta = 1
                     while bracket_delta != 0:
                         current_position += 1
@@ -77,16 +120,27 @@ class BrainfuckInterpreter:
                         elif code[current_position] == ']':
                             bracket_delta -= 1
                 else:
-                    bracket_stack.append(current_position)
+                    # Save a bracket position to the stack and continue
+                    self._bracket_stack.append(current_position)
             elif character == ']':
                 if self._currently_zero():
-                    bracket_stack.pop()
+                    # Remove a bracket position from the stack and continue
+                    self._bracket_stack.pop()
                 else:
-                    current_position = bracket_stack[-1]
+                    # Go back to the position of the last bracket
+                    current_position = self._bracket_stack[-1]
+            
+            #Move forward to next operation
             current_position += 1
 
 
 def run_file(file_name):
+    """
+    Runs the file specified
+    
+    Arguments:
+        file_name {str} -- name for file to run
+    """
     with open(file_name, 'r') as file:
         interpreter = BrainfuckInterpreter()
         code = file.read()
@@ -94,11 +148,10 @@ def run_file(file_name):
 
 
 if __name__ == '__main__':
-
+    # If passed in as an argument, run those files.
     if len(sys.argv) > 1:
         for file_name in sys.argv[1:]:
             run_file(file_name)
-    else:
-        while True:
-            run_file(input('Run File: '))
-            print('Done')
+    while True:
+        run_file(input('Run File: '))
+        print('Done')
